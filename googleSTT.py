@@ -1,43 +1,29 @@
-import os
+# from pydub import AudioSegment
+from google.cloud import speech_v1 as speech
 
-from google.cloud.speech_v2 import SpeechClient
-from google.cloud.speech_v2.types import cloud_speech
+def transcribe_file(audio_path: str):
+    client = speech.SpeechClient.from_service_account_file("./magisterkastt-06b1d98aebd0.json")
 
-PROJECT_ID = "magisterkastt"
+    # Wczytanie pliku audio
+    with open(audio_path, "rb") as audio_file:
+        content = audio_file.read()
 
-def quickstart_v2(audio_file: str) -> cloud_speech.RecognizeResponse:
-    """Transcribe an audio file.
-    Args:
-        audio_file (str): Path to the local audio file to be transcribed.
-    Returns:
-        cloud_speech.RecognizeResponse: The response from the recognize request, containing
-        the transcription results
-    """
-    # Reads a file as bytes
-    with open(audio_file, "rb") as f:
-        audio_content = f.read()
+    audio = speech.RecognitionAudio(content=content)
 
-    # Instantiates a client
-    client = SpeechClient()
-
-    config = cloud_speech.RecognitionConfig(
-        auto_decoding_config=cloud_speech.AutoDetectDecodingConfig(),
-        language_codes=["pl-PL"],
-        model="long",
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.MP3,  # dla m4a zmień na LINEAR16 po konwersji
+        language_code="pl-PL",
+        enable_automatic_punctuation=True,
+        sample_rate_hertz=44100,  # dostosuj do swojego pliku audio
     )
 
-    request = cloud_speech.RecognizeRequest(
-        recognizer=f"projects/{PROJECT_ID}/locations/global/recognizers/_",
-        config=config,
-        content=audio_content,
-    )
+    response = client.recognize(config=config, audio=audio)
 
-    # Transcribes the audio into text
-    response = client.recognize(request=request)
-
+    print("=== Transkrypcja ===")
     for result in response.results:
-        print(f"Transcript: {result.alternatives[0].transcript}")
+        print(result.alternatives[0].transcript)
 
     return response
 
-print(quickstart_v2("./test1.m4a"))
+if __name__ == "__main__":
+    transcribe_file("test1.mp3")
