@@ -1,5 +1,6 @@
 import whisper
 import time
+from datetime import datetime
 
 class LocalWhisperClient:
     def __init__(self, model_size="small"):
@@ -27,7 +28,14 @@ def test_local_whisper():
     result = client.transcribe("test1.wav")
 
     print("=== TEST LOKALNEGO KLIENTA ===")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = f"transcription_{timestamp}.txt"
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(result["text"])
+
+    print(f"Zapisano transkrypcję do: {output_path}")
     print(f"Tekst: {result['text']}")
+    # print(f"Tekst: {result['text']}")
     print(f"Czas przetwarzania: {result['rt_time']:.2f} s")
 
 if __name__ == "__main__":
