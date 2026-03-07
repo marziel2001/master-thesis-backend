@@ -1,6 +1,20 @@
-import whisper
 import time
 from datetime import datetime
+import os
+
+try:
+    import whisper
+except Exception as e:
+    raise ImportError(
+        "Failed to import the 'whisper' library. "
+        "On Windows the package named 'whisper' from PyPI is sometimes a different project that fails at import.\n"
+        "Recommended fix: uninstall the wrong package and install OpenAI's Whisper or an alternative:\n"
+        "  C:/.../python.exe -m pip uninstall -y whisper\n"
+        "  C:/.../python.exe -m pip install -U openai-whisper\n"
+        "Or consider 'faster-whisper' for better Windows support. Also ensure 'ffmpeg' is installed and on PATH.\n"
+        f"Original import error: {e}"
+    )
+
 
 class LocalWhisperClient:
     def __init__(self, model_size="small"):
@@ -22,10 +36,19 @@ class LocalWhisperClient:
             "rt_time": end - start
         }
 
-def test_local_whisper():
-    client = LocalWhisperClient(model_size="large-v3")
 
-    result = client.transcribe("test1.wav")
+def test_local_whisper():
+    client = LocalWhisperClient(model_size="small")
+
+    import sys
+    # allow passing audio path as first argument, otherwise default to test1.wav
+    audio = sys.argv[1] if len(sys.argv) > 1 else "C:\\Users\\Marcel\\Desktop\\MAGISTERKA\\projekt\\backend\\transcribe\\test1.wav"
+    if not audio or not os.path.exists(audio):
+        raise FileNotFoundError(
+            f"Audio file not found: {audio}. Provide a valid path as the first argument or place the file in the current directory."
+        )
+
+    result = client.transcribe(audio)
 
     print("=== TEST LOKALNEGO KLIENTA ===")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -35,8 +58,8 @@ def test_local_whisper():
 
     print(f"Zapisano transkrypcję do: {output_path}")
     print(f"Tekst: {result['text']}")
-    # print(f"Tekst: {result['text']}")
     print(f"Czas przetwarzania: {result['rt_time']:.2f} s")
+
 
 if __name__ == "__main__":
     test_local_whisper()
