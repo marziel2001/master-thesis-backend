@@ -131,8 +131,6 @@ def transcribe_file(audio_path: str, bucket: Optional[str] = None, region: str =
 
 
 if __name__ == "__main__":
-    # Quick local test (adjust bucket/region in credentials/aws_credentials.json)
-    # Accept a file path as first arg, otherwise default to test1.wav
     audio = sys.argv[1] if len(sys.argv) > 1 else "test1.wav"
     if not os.path.exists(audio):
         print(f"Audio file not found: {audio}")

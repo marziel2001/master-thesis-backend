@@ -1,8 +1,35 @@
-# from pydub import AudioSegment
-from google.cloud import speech_v1 as speech
+import os
+import importlib
+import sys
+
+try:
+    from google.cloud import speech_v1 as speech
+except Exception:
+    speech = None
+
+
+def ensure_requirements():
+    missing = []
+    try:
+        importlib.import_module("google.cloud.speech_v1")
+    except Exception:
+        missing.append("google-cloud-speech")
+    creds_path = os.path.join(".", "credentials", "google_credentials.json")
+    if not os.path.exists(creds_path):
+        missing.append(f"credentials file not found: {creds_path}")
+    if missing:
+        lines = ["Missing requirements:"]
+        for m in missing:
+            lines.append(" - " + m)
+        lines.append("")
+        lines.append("Install packages: pip install google-cloud-speech")
+        lines.append(f"Place credentials JSON at: {creds_path}")
+        raise RuntimeError("\n".join(lines))
+
 
 def transcribe_file(audio_path: str):
-    client = speech.SpeechClient.from_service_account_file("./magisterkastt-06b1d98aebd0.json")
+    ensure_requirements()
+    client = speech.SpeechClient.from_service_account_file("./credentials/google_credentials.json")
 
     # Wczytanie pliku audio
     with open(audio_path, "rb") as audio_file:
@@ -19,11 +46,11 @@ def transcribe_file(audio_path: str):
 
     response = client.recognize(config=config, audio=audio)
 
-    print("=== Transkrypcja ===")
-    for result in response.results:
-        print(result.alternatives[0].transcript)
-
     return response
 
 if __name__ == "__main__":
-    transcribe_file("test1.mp3")
+    response = transcribe_file("test1.mp3")
+
+    print("=== Transkrypcja ===")
+    for result in response.results:
+        print(result.alternatives[0].transcript)

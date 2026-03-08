@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 
 try:
@@ -25,14 +24,13 @@ def transcribe_file(audio_path: str):
                 key = cfg.get("AZURE_SPEECH_KEY") or cfg.get("key")
         except Exception:
             key = None
-    region = "northeurope"  # Replace with your Azure region
+    region = "northeurope"
     if not key or not region:
         raise ValueError(
             "Set AZURE_SPEECH_KEY environment variable"
         )
 
     speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
-    # Set recognition language (Polish by default to match Google example)
     speech_config.speech_recognition_language = "pl-PL"
 
     audio_input = speechsdk.audio.AudioConfig(filename=audio_path)
@@ -40,26 +38,24 @@ def transcribe_file(audio_path: str):
         speech_config=speech_config, audio_config=audio_input
     )
 
-    print("Recognizing...")
     result = recognizer.recognize_once()
 
     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        print("=== Transkrypcja ===")
-        print(result.text)
         return result.text
     elif result.reason == speechsdk.ResultReason.NoMatch:
-        print("No speech could be recognized.")
         return ""
     else:
         # Canceled or error
-        cancellation_details = speechsdk.CancellationDetails(result)
-        print(f"Speech Recognition canceled: {cancellation_details.reason}")
-        if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            print(f"Error details: {cancellation_details.error_details}")
         return ""
 
 
 if __name__ == "__main__":
     # Hardcoded filename for quick testing
     audio_file = "test1.wav"
-    transcribe_file(audio_file)
+    print("Recognizing...")
+    text = transcribe_file(audio_file)
+    if text:
+        print("=== Transkrypcja ===")
+        print(text)
+    else:
+        print("No speech could be recognized or an error occurred.")
