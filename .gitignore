@@ -9,3 +9,4 @@ transcriptions/openai_offline_test1.txt
 *.m4a
 *.wav
 *.mp3
+*.txt
