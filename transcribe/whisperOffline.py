@@ -26,7 +26,8 @@ class LocalWhisperClient:
         result = self.model.transcribe(
             audio_path,
             language="pl",
-            fp16=False
+            fp16=False,
+            verbose=True
         )
 
         end = time.perf_counter()
@@ -38,7 +39,8 @@ class LocalWhisperClient:
 
 
 def test_local_whisper():
-    client = LocalWhisperClient(model_size="small")
+    print(f"Dostepne modele: {whisper.available_models()}")
+    client = LocalWhisperClient(model_size="large-v3")
 
     import sys
     # allow passing audio path as first argument, otherwise default to test1.wav
