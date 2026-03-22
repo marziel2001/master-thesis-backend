@@ -36,7 +36,7 @@ def transcribe_file(audio_path: str, bucket: Optional[str] = None, region: str =
     Returns empty string on failure.
     """
     base_dir = os.path.dirname(__file__)
-    cfg_path = os.path.join(base_dir, "credentials/aws_credentials.json")
+    cfg_path = os.path.join(base_dir, "..", "credentials", "aws_credentials.json")
     cfg = _load_aws_credentials(cfg_path)
 
     aws_key = cfg.get("AWS_ACCESS_KEY_ID")

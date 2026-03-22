@@ -14,7 +14,8 @@ def ensure_requirements():
         importlib.import_module("google.cloud.speech_v1")
     except Exception:
         missing.append("google-cloud-speech")
-    creds_path = os.path.join(".", "credentials", "google_credentials.json")
+    base_dir = os.path.dirname(__file__)
+    creds_path = os.path.join(base_dir, "..", "credentials", "google_credentials.json")
     if not os.path.exists(creds_path):
         missing.append(f"credentials file not found: {creds_path}")
     if missing:
@@ -29,7 +30,9 @@ def ensure_requirements():
 
 def transcribe_file(audio_path: str):
     ensure_requirements()
-    client = speech.SpeechClient.from_service_account_file("./credentials/google_credentials.json")
+    base_dir = os.path.dirname(__file__)
+    creds_path = os.path.join(base_dir, "..", "credentials", "google_credentials.json")
+    client = speech.SpeechClient.from_service_account_file(creds_path)
 
     # Wczytanie pliku audio
     with open(audio_path, "rb") as audio_file:

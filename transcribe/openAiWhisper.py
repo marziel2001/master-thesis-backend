@@ -4,7 +4,7 @@ from openai import OpenAI
 
 
 def load_api_key() -> str | None:
-    creds_path = os.path.join(os.path.dirname(__file__), "credentials", "openai_credentials.json")
+    creds_path = os.path.join(os.path.dirname(__file__), "..", "credentials", "openai_credentials.json")
     api_key = None
     try:
         with open(creds_path, "r", encoding="utf-8") as f:

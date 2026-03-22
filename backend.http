@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:8000
+@audioPath = ./transcribe/test1.wav
+
+### Health check
+GET {{baseUrl}}/health
+Accept: application/json
+
+### Lista dostępnych modeli
+GET {{baseUrl}}/api/models
+Accept: application/json
+
+### Transkrypcja pliku - model lokalny Whisper
+POST {{baseUrl}}/api/transcribe/whisperOffline
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+Accept: application/json
+
+--WebAppBoundary
+Content-Disposition: form-data; name="whisper_model"
+
+large-v3
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="test1.wav"
+Content-Type: audio/wav
+
+< {{audioPath}}
+--WebAppBoundary--
+
+### Transkrypcja pliku - model OpenAI
+POST {{baseUrl}}/api/transcribe/openai
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+Accept: application/json
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="test1.wav"
+Content-Type: audio/wav
+
+< {{audioPath}}
+--WebAppBoundary--
+
+### Przykład błędnego modelu (powinien zwrócić 400)
+POST {{baseUrl}}/api/transcribe/invalidModel
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+Accept: application/json
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="test1.wav"
+Content-Type: audio/wav
+
+< {{audioPath}}
+--WebAppBoundary--
