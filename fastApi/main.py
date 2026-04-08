@@ -4,6 +4,8 @@ import os
 import tempfile
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from fastApi.diff_html import build_colored_diff_html, normalize_for_metrics
 from fastApi.transcription_service import available_models, resolve_model_name, transcribe_audio
 
 app = FastAPI(title="Transcription API", version="1.0.0")
@@ -23,6 +25,34 @@ def health() -> dict[str, str]:
 @app.get("/api/models")
 def models() -> dict[str, list[str]]:
     return {"models": available_models()}
+
+
+class DiffHtmlRequest(BaseModel):
+    reference_text: str
+    hypothesis_text: str
+    model_name: str
+    normalize: bool = True
+
+
+class DiffHtmlResponse(BaseModel):
+    html: str
+
+
+@app.post("/api/diff-html", response_model=DiffHtmlResponse)
+def diff_html(payload: DiffHtmlRequest) -> DiffHtmlResponse:
+    reference_text = payload.reference_text
+    hypothesis_text = payload.hypothesis_text
+
+    if payload.normalize:
+        reference_text = normalize_for_metrics(reference_text)
+        hypothesis_text = normalize_for_metrics(hypothesis_text)
+
+    html_output = build_colored_diff_html(
+        reference_text=reference_text,
+        hypothesis_text=hypothesis_text,
+        model_name=payload.model_name,
+    )
+    return DiffHtmlResponse(html=html_output)
 
 
 @app.post("/api/transcribe/{model_name}")

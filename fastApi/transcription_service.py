@@ -92,7 +92,7 @@ def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "la
         return "Open ai called"
         return _transcribe_with_openai(audio_path)
     if model == "whisper_offline":
-        return "local whisper called"
+        # return "local whisper called"
         return _transcribe_with_local_whisper(audio_path, whisper_model=whisper_model)
     if model == "google":
         return "Google called"
