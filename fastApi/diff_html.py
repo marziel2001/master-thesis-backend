@@ -79,17 +79,17 @@ def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_nam
           .diff-title {{ font-weight: 700; margin-bottom: 6px; }}
           .diff-row-label {{ font-weight: 700; color: #333; margin-right: 8px; }}
           .token {{
-            display: inline-block;
-            margin: 1px 2px;
-            padding: 0 4px;
-            border-radius: 4px;
+                        display: inline;
+                        margin: 0;
+                        padding: 0;
+                        border-radius: 0;
           }}
-          .eq {{ background: #f5f5f5; color: #222; }}
-          .sub-ref {{ background: #ffe1e1; color: #8a1c1c; }}
-          .sub-hyp {{ background: #fff1cc; color: #7a5b00; }}
-          .del {{ background: #ffd6d6; color: #8a1c1c; text-decoration: line-through; }}
-          .ins {{ background: #d9f8d9; color: #1d6f1d; font-weight: 600; }}
-          .gap {{ background: #ececec; color: #888; }}
+                    .eq {{ background: transparent; color: inherit; }}
+                    .sub-ref {{ background: #ffe1e1; color: #8a1c1c; padding: 0 4px; border-radius: 4px; }}
+                    .sub-hyp {{ background: #fff1cc; color: #7a5b00; padding: 0 4px; border-radius: 4px; }}
+                    .del {{ background: #ffd6d6; color: #8a1c1c; text-decoration: line-through; padding: 0 4px; border-radius: 4px; }}
+                    .ins {{ background: #d9f8d9; color: #1d6f1d; font-weight: 600; padding: 0 4px; border-radius: 4px; }}
+                    .gap {{ color: #888; }}
           .legend {{ margin-top: 8px; color: #555; font-size: 11px; }}
         </style>
         <div class='diff-wrap'>
