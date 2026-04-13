@@ -51,7 +51,7 @@ def transcribe_file(audio_path: str):
 
 if __name__ == "__main__":
     # Hardcoded filename for quick testing
-    audio_file = "test1.wav"
+    audio_file = os.path.join(os.path.dirname(__file__), "..", "inputs", "test1.wav")
     print("Recognizing...")
     text = transcribe_file(audio_file)
     if text:

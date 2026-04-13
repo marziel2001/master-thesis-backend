@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:8000
-@audioPath = ./transcribe/test1.wav
+@audioPath = ./inputs/test1.wav
 
 ### Health check
 GET {{baseUrl}}/health

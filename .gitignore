@@ -5,7 +5,6 @@ transcribe/__pycache__/*
 __pycache__/*
 transcribe/*.wav
 temp_refs/*
-transcriptions/openai_offline_test1.txt
 *.m4a
 *.wav
 *.mp3

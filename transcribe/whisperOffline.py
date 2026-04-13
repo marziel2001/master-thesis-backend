@@ -43,8 +43,9 @@ def test_local_whisper():
     client = LocalWhisperClient(model_size="large-v3")
 
     import sys
-    # allow passing audio path as first argument, otherwise default to test1.wav
-    audio = sys.argv[1] if len(sys.argv) > 1 else "C:\\Users\\Marcel\\Desktop\\MAGISTERKA\\projekt\\backend\\transcribe\\test1.wav"
+    base_dir = os.path.join(os.path.dirname(__file__), "..")
+    # allow passing audio path as first argument, otherwise default to inputs/test1.wav
+    audio = sys.argv[1] if len(sys.argv) > 1 else os.path.join(base_dir, "inputs", "test1.wav")
     if not audio or not os.path.exists(audio):
         raise FileNotFoundError(
             f"Audio file not found: {audio}. Provide a valid path as the first argument or place the file in the current directory."
@@ -54,7 +55,9 @@ def test_local_whisper():
 
     print("=== TEST LOKALNEGO KLIENTA ===")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f"transcription_{timestamp}.txt"
+    outputs_dir = os.path.join(base_dir, "outputs")
+    os.makedirs(outputs_dir, exist_ok=True)
+    output_path = os.path.join(outputs_dir, f"transcription_{timestamp}.txt")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(result["text"])
 

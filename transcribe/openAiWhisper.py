@@ -33,7 +33,8 @@ def transcribe_file(audio_path: str) -> str:
 
 
 if __name__ == "__main__":
-    audio_path = "C:\\Users\\Marcel\\Desktop\\MAGISTERKA\\projekt\\backend\\test1.wav"
+    base_dir = os.path.join(os.path.dirname(__file__), "..")
+    audio_path = os.path.join(base_dir, "inputs", "test1.wav")
     try:
         text = transcribe_file(audio_path)
         print(text)

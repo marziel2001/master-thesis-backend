@@ -52,7 +52,8 @@ def transcribe_file(audio_path: str):
     return response
 
 if __name__ == "__main__":
-    response = transcribe_file("test1.mp3")
+    default_audio = os.path.join(os.path.dirname(__file__), "..", "inputs", "test1.mp3")
+    response = transcribe_file(default_audio)
 
     print("=== Transkrypcja ===")
     for result in response.results:

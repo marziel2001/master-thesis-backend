@@ -131,7 +131,8 @@ def transcribe_file(audio_path: str, bucket: Optional[str] = None, region: str =
 
 
 if __name__ == "__main__":
-    audio = sys.argv[1] if len(sys.argv) > 1 else "test1.wav"
+    default_audio = os.path.join(os.path.dirname(__file__), "..", "inputs", "test1.wav")
+    audio = sys.argv[1] if len(sys.argv) > 1 else default_audio
     if not os.path.exists(audio):
         print(f"Audio file not found: {audio}")
     else:

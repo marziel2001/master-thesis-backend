@@ -3,7 +3,11 @@ from __future__ import annotations
 import html
 
 from jiwer import process_words
-from remove_punctuation import strip_punctuation_text
+
+try:
+    from backend.scripts.remove_punctuation import strip_punctuation_text
+except ModuleNotFoundError:
+    from scripts.remove_punctuation import strip_punctuation_text
 
 
 def normalize_for_metrics(text: str) -> str:
