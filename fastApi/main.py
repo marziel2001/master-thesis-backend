@@ -4,6 +4,7 @@ import os
 import tempfile
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from jiwer import cer, wer
 from pydantic import BaseModel
 from fastApi.diff_html import build_colored_diff_html, normalize_for_metrics
 from fastApi.transcription_service import available_models, resolve_model_name, transcribe_audio
@@ -38,6 +39,38 @@ class DiffHtmlResponse(BaseModel):
     html: str
 
 
+class MetricsRequest(BaseModel):
+    reference_text: str
+    hypothesis_text: str
+    normalize: bool = True
+
+
+class MetricsResponse(BaseModel):
+    wer: float
+    cer: float
+
+
+class TranscriptionResponse(BaseModel):
+    requested_model: str
+    model: str
+    filename: str
+    transcription: str
+    wer: float | None = None
+    cer: float | None = None
+
+
+def calculate_metrics(
+    reference_text: str,
+    hypothesis_text: str,
+    normalize: bool = True,
+) -> tuple[float, float]:
+    if normalize:
+        reference_text = normalize_for_metrics(reference_text)
+        hypothesis_text = normalize_for_metrics(hypothesis_text)
+
+    return wer(reference_text, hypothesis_text), cer(reference_text, hypothesis_text)
+
+
 @app.post("/api/diff-html", response_model=DiffHtmlResponse)
 def diff_html(payload: DiffHtmlRequest) -> DiffHtmlResponse:
     reference_text = payload.reference_text
@@ -55,12 +88,23 @@ def diff_html(payload: DiffHtmlRequest) -> DiffHtmlResponse:
     return DiffHtmlResponse(html=html_output)
 
 
-@app.post("/api/transcribe/{model_name}")
+@app.post("/api/metrics", response_model=MetricsResponse)
+def metrics(payload: MetricsRequest) -> MetricsResponse:
+    wer_value, cer_value = calculate_metrics(
+        reference_text=payload.reference_text,
+        hypothesis_text=payload.hypothesis_text,
+        normalize=payload.normalize,
+    )
+    return MetricsResponse(wer=wer_value, cer=cer_value)
+
+
+@app.post("/api/transcribe/{model_name}", response_model=TranscriptionResponse)
 async def transcribe(
     model_name: str,
     file: UploadFile = File(...),
     whisper_model: str = Form("large-v3"),
-) -> dict[str, str]:
+    reference_text: str = Form(""),
+) -> TranscriptionResponse:
     temp_path = None
 
     try:
@@ -77,12 +121,26 @@ async def transcribe(
             whisper_model=whisper_model,
         )
 
-        return {
-            "requested_model": model_name,
-            "model": normalized_model,
-            "filename": file.filename or "",
-            "transcription": transcript or "",
-        }
+        wer_value: float | None = None
+        cer_value: float | None = None
+        if reference_text.strip():
+            try:
+                wer_value, cer_value = calculate_metrics(
+                    reference_text=reference_text,
+                    hypothesis_text=transcript or "",
+                    normalize=True,
+                )
+            except Exception:
+                wer_value, cer_value = None, None
+
+        return TranscriptionResponse(
+            requested_model=model_name,
+            model=normalized_model,
+            filename=file.filename or "",
+            transcription=transcript or "",
+            wer=wer_value,
+            cer=cer_value,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except HTTPException:
