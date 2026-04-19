@@ -1,22 +1,24 @@
 import sys
 from jiwer import cer, wer
 
+
 def read_file(path: str) -> str:
 	with open(path, "r", encoding="utf-8") as f:
 		return f.read()
 
 
-def print_metrics(ref_path: str, hyp_path: str) -> None:
+def calculate_metrics_from_text(ref_text: str, hyp_text: str) -> dict[str, float]:
+	return {
+		"wer": wer(ref_text, hyp_text),
+		"cer": cer(ref_text, hyp_text),
+	}
+
+
+def calculate_metrics(ref_path: str, hyp_path: str) -> dict[str, float]:
 	ref_text = read_file(ref_path)
 	hyp_text = read_file(hyp_path)
-
-	wer_res = wer(ref_text, hyp_text)
-	cer_res = cer(ref_text, hyp_text)
-
-	print(f"Metrics for files: {ref_path} vs {hyp_path}")
-	print(f"WER: {wer_res}")
-	print(f"CER: {cer_res}")
+	return calculate_metrics_from_text(ref_text, hyp_text)
 
 
 if __name__ == "__main__":
-	print_metrics(sys.argv[1], sys.argv[2])
+	calculate_metrics(sys.argv[1], sys.argv[2])
