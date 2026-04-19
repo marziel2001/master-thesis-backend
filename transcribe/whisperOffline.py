@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 import os
+import sys
 
 try:
     import whisper
@@ -42,28 +43,40 @@ def test_local_whisper():
     print(f"Dostepne modele: {whisper.available_models()}")
     client = LocalWhisperClient(model_size="large-v3")
 
-    import sys
     base_dir = os.path.join(os.path.dirname(__file__), "..")
-    # allow passing audio path as first argument, otherwise default to inputs/test1.wav
-    audio = sys.argv[1] if len(sys.argv) > 1 else os.path.join(base_dir, "inputs", "test1.wav")
-    if not audio or not os.path.exists(audio):
+    print("=== TEST LOKALNEGO KLIENTA ===")
+    # allow passing many audio paths; if none provided use default input
+    audio_inputs = sys.argv[1:] if len(sys.argv) > 1 else [os.path.join(base_dir, "inputs", "test1.wav")]
+
+    missing_files = [audio for audio in audio_inputs if not audio or not os.path.exists(audio)]
+    if missing_files:
         raise FileNotFoundError(
-            f"Audio file not found: {audio}. Provide a valid path as the first argument or place the file in the current directory."
+            "Audio file(s) not found: "
+            f"{', '.join(missing_files)}. "
+            "Provide valid path(s) as arguments or place the default file in backend/inputs/test1.wav."
         )
 
-    result = client.transcribe(audio)
-
-    print("=== TEST LOKALNEGO KLIENTA ===")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     outputs_dir = os.path.join(base_dir, "outputs")
     os.makedirs(outputs_dir, exist_ok=True)
-    output_path = os.path.join(outputs_dir, f"transcription_{timestamp}.txt")
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(result["text"])
 
-    print(f"Zapisano transkrypcję do: {output_path}")
-    print(f"Tekst: {result['text']}")
-    print(f"Czas przetwarzania: {result['rt_time']:.2f} s")
+    total_rt_time = 0.0
+    for idx, audio in enumerate(audio_inputs, start=1):
+        print(f"[{idx}/{len(audio_inputs)}] Przetwarzanie: {audio}")
+        result = client.transcribe(audio)
+        total_rt_time += result["rt_time"]
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        audio_name = os.path.splitext(os.path.basename(audio))[0]
+        output_path = os.path.join(outputs_dir, f"transcription_{audio_name}_{timestamp}.txt")
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(result["text"])
+
+        print(f"Zapisano transkrypcję do: {output_path}")
+        print(f"Tekst: {result['text']}")
+        print(f"Czas przetwarzania: {result['rt_time']:.2f} s")
+
+    print(f"Przetworzono {len(audio_inputs)} plik(ów). Łączny czas przetwarzania: {total_rt_time:.2f} s")
 
 
 if __name__ == "__main__":
