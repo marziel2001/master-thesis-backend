@@ -594,7 +594,7 @@ def test_local_whisper():
     args = _build_arg_parser().parse_args()
 
     print(f"Dostepne modele: {whisper.available_models()}")
-    client = LocalWhisperClient(model_size=args.model_size)
+    client = LocalWhisperClient(model_size="large-v3")
 
     base_dir = os.path.join(os.path.dirname(__file__), "..")
     print("=== TEST LOKALNEGO KLIENTA ===")
