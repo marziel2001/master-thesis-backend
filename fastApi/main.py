@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from jiwer import cer, wer
@@ -57,6 +58,7 @@ class TranscriptionResponse(BaseModel):
     transcription: str
     wer: float | None = None
     cer: float | None = None
+    rt_time: float | None = None
 
 
 def calculate_metrics(
@@ -115,11 +117,13 @@ async def transcribe(
             temp.write(await file.read())
             temp_path = temp.name
 
+        start_time = time.perf_counter()
         transcript = transcribe_audio(
             model=normalized_model,
             audio_path=temp_path,
             whisper_model=whisper_model,
         )
+        rt_time = time.perf_counter() - start_time
 
         wer_value: float | None = None
         cer_value: float | None = None
@@ -140,6 +144,7 @@ async def transcribe(
             transcription=transcript or "",
             wer=wer_value,
             cer=cer_value,
+            rt_time=rt_time,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

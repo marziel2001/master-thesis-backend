@@ -5,17 +5,33 @@ from typing import Dict, Literal
 
 from transcribe.amazon_stt import transcribe_file
 
-ModelName = Literal["openai", "whisper_offline", "google", "azure", "amazon"]
+ModelName = Literal[
+    "openai",
+    "whisper_offline",
+    "whisperx",
+    "google",
+    "azure",
+    "amazon",
+]
 
 _whisper_clients: Dict[str, object] = {}
 
-_PATH_MODEL_NAMES = ["openai", "whisperOffline", "googleStt", "azureStt", "amazonStt"]
+_PATH_MODEL_NAMES = [
+    "openai",
+    "whisperOffline",
+    "whisperX",
+    "googleStt",
+    "azureStt",
+    "amazonStt",
+]
 _MODEL_ALIASES: dict[str, ModelName] = {
     "openai": "openai",
     "openaiwhisper": "openai",
     "whisperoffline": "whisper_offline",
     "whisperofflinestt": "whisper_offline",
     "localwhisper": "whisper_offline",
+    "whisperx": "whisperx",
+    "whisperxstt": "whisperx",
     "googlestt": "google",
     "google": "google",
     "azurestt": "azure",
@@ -63,6 +79,12 @@ def _transcribe_with_openai(audio_path: str) -> str:
     return transcribe_file(audio_path)
 
 
+def _transcribe_with_whisperx(audio_path: str, whisper_model: str) -> str:
+    from transcribe.whisperX import transcribe_file
+
+    return transcribe_file(audio_path, model_size=whisper_model)
+
+
 def _transcribe_with_azure(audio_path: str) -> str:
     from transcribe.ms_azure_stt import transcribe_file
 
@@ -94,6 +116,8 @@ def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "la
     if model == "whisper_offline":
         # return "local whisper called"
         return _transcribe_with_local_whisper(audio_path, whisper_model=whisper_model)
+    if model == "whisperx":
+        return _transcribe_with_whisperx(audio_path, whisper_model=whisper_model)
     if model == "google":
         return "Google called"
         return _transcribe_with_google(audio_path)
