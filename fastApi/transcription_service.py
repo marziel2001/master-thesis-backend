@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
+import tempfile
 from typing import Dict, Literal
 
 from transcribe.amazon_stt import transcribe_file
@@ -79,10 +82,61 @@ def _transcribe_with_openai(audio_path: str) -> str:
     return transcribe_file(audio_path)
 
 
-def _transcribe_with_whisperx(audio_path: str, whisper_model: str) -> str:
-    from transcribe.whisperX import transcribe_file
+def _resolve_whisperx_python() -> str:
+    python_override = os.getenv("WHISPERX_PYTHON")
+    if python_override:
+        return python_override
 
-    return transcribe_file(audio_path, model_size=whisper_model)
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    if sys.platform.startswith("win"):
+        candidate = os.path.join(base_dir, ".venv-whisperx", "Scripts", "python.exe")
+    else:
+        candidate = os.path.join(base_dir, ".venv-whisperx", "bin", "python")
+
+    if os.path.exists(candidate):
+        return candidate
+
+    raise FileNotFoundError(
+        "WhisperX Python not found. Set WHISPERX_PYTHON to the python.exe from "
+        "the WhisperX venv (e.g. backend/.venv-whisperx)."
+    )
+
+
+def _resolve_whisperx_script() -> str:
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    script_path = os.path.join(base_dir, "transcribe", "whisperX.py")
+    if os.path.exists(script_path):
+        return script_path
+    raise FileNotFoundError(f"WhisperX script not found: {script_path}")
+
+
+def _transcribe_with_whisperx(audio_path: str, whisper_model: str) -> str:
+    python_exe = _resolve_whisperx_python()
+    script_path = _resolve_whisperx_script()
+
+    output_file = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
+            output_file = tmp.name
+
+        command = [
+            python_exe,
+            script_path,
+            audio_path,
+            "--model",
+            whisper_model,
+            "--output",
+            output_file,
+        ]
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        with open(output_file, "r", encoding="utf-8") as handle:
+            return handle.read().strip()
+    except subprocess.CalledProcessError as exc:
+        details = exc.stderr.strip() or exc.stdout.strip() or "Unknown error"
+        raise RuntimeError(f"WhisperX subprocess failed: {details}") from exc
+    finally:
+        if output_file and os.path.exists(output_file):
+            os.remove(output_file)
 
 
 def _transcribe_with_azure(audio_path: str) -> str:
