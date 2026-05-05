@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import time
 import os
 from typing import Any
 import argparse
@@ -149,6 +151,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
 def _main() -> int:
     parser = _build_cli_parser()
     args = parser.parse_args()
+    started_at = time.perf_counter()
     text = transcribe_file(
         audio_path=args.audio_path,
         model_size=args.model,
@@ -157,6 +160,7 @@ def _main() -> int:
         compute_type=args.compute_type,
         batch_size=args.batch_size,
     )
+    compute_time = time.perf_counter() - started_at
     output_path = args.output
     if not output_path:
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -166,14 +170,25 @@ def _main() -> int:
         audio_name = os.path.splitext(os.path.basename(args.audio_path))[0]
         output_path = os.path.join(
             outputs_dir,
-            f"transcription_whisperx_{audio_name}_{timestamp}.txt",
+            f"transcription_whisperx_{audio_name}_{timestamp}.json",
         )
 
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
+    payload = {
+        "modelName": "whisperx",
+        "modelVersion": args.model,
+        "computeTime": compute_time,
+        "filename": os.path.basename(args.audio_path),
+        "transcription": text,
+        "language": args.language,
+        "device": args.device,
+        "computeType": args.compute_type,
+        "batchSize": args.batch_size,
+    }
     with open(output_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
 
     print(text)
     print(f"Saved transcription to: {output_path}")

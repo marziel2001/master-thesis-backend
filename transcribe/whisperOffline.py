@@ -628,7 +628,7 @@ def test_local_whisper():
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         audio_name = os.path.splitext(os.path.basename(audio))[0]
-        output_path = os.path.join(outputs_dir, f"transcription_{audio_name}_{timestamp}.txt")
+        output_path = os.path.join(outputs_dir, f"transcription_{audio_name}_{timestamp}.json")
 
         output_text = result["text"]
         diarized_segments: list[dict[str, Any]] = []
@@ -678,19 +678,18 @@ def test_local_whisper():
                         f"Reason: {diarization_error}"
                     )
 
+        payload = {
+            "modelName": "whisper_offline",
+            "modelVersion": args.model_size,
+            "computeTime": result["rt_time"],
+            "filename": os.path.basename(audio),
+            "transcription": output_text,
+            "segments": diarized_segments if diarization_succeeded else [],
+            "diarizationSucceeded": diarization_succeeded,
+            "originalTranscription": result["text"],
+        }
         with open(output_path, "w", encoding="utf-8") as f:
-            f.write(output_text)
-
-        if args.diarize and diarization_succeeded:
-            json_path = os.path.join(outputs_dir, f"transcription_{audio_name}_{timestamp}.json")
-            payload = {
-                "text": result["text"],
-                "segments": diarized_segments,
-                "model": args.model_size,
-            }
-            with open(json_path, "w", encoding="utf-8") as jf:
-                json.dump(payload, jf, ensure_ascii=False, indent=2)
-            print(f"Zapisano diarization JSON do: {json_path}")
+            json.dump(payload, f, ensure_ascii=False, indent=2)
 
         print(f"Zapisano transkrypcję do: {output_path}")
         print(f"Tekst: {result['text']}")

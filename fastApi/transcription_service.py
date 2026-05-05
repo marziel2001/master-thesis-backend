@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -116,7 +117,7 @@ def _transcribe_with_whisperx(audio_path: str, whisper_model: str) -> str:
 
     output_file = None
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
             output_file = tmp.name
 
         command = [
@@ -130,7 +131,18 @@ def _transcribe_with_whisperx(audio_path: str, whisper_model: str) -> str:
         ]
         subprocess.run(command, check=True, capture_output=True, text=True)
         with open(output_file, "r", encoding="utf-8") as handle:
-            return handle.read().strip()
+            try:
+                payload = json.load(handle)
+            except json.JSONDecodeError:
+                handle.seek(0)
+                return handle.read().strip()
+
+        if isinstance(payload, dict):
+            transcription = payload.get("transcription")
+            if isinstance(transcription, str):
+                return transcription.strip()
+
+        return ""
     except subprocess.CalledProcessError as exc:
         details = exc.stderr.strip() or exc.stdout.strip() or "Unknown error"
         raise RuntimeError(f"WhisperX subprocess failed: {details}") from exc

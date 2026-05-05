@@ -1,3 +1,4 @@
+import json
 import time
 from pathlib import Path
 
@@ -75,9 +76,21 @@ def normalize_text(text: str) -> str:
     return normalize_for_metrics(text)
 
 
-def save_transcription(output_dir: Path, model_key: str, basename: str, transcription: str) -> Path:
-    out_path = output_dir / f"{model_key}_{basename}.txt"
-    out_path.write_text(transcription, encoding="utf-8")
+def save_transcription(
+    output_dir: Path,
+    model_key: str,
+    basename: str,
+    transcription: str,
+    compute_time: float,
+) -> Path:
+    out_path = output_dir / f"{model_key}_{basename}.json"
+    payload = {
+        "modelName": model_key,
+        "modelVersion": model_key,
+        "computeTime": compute_time,
+        "transcription": transcription,
+    }
+    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return out_path
 
 
@@ -103,15 +116,18 @@ def execute_transcription_workflow(
     results = {}
 
     for model_key in selected_models:
+        started_at = time.perf_counter()
         text_raw = run_transcription_for_model(model_key, audio_path)
+        compute_time = time.perf_counter() - started_at
         text = normalize_text(text_raw)
-        save_transcription(output_dir, model_key, basename, text)
+        save_transcription(output_dir, model_key, basename, text, compute_time)
         wer, cer = compute_metrics(reference_text, text)
 
         results[model_key] = {
             "text": text,
             "wer": wer,
             "cer": cer,
+            "compute_time": compute_time,
         }
 
     return {
