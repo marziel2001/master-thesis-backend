@@ -13,3 +13,4 @@ temp_refs/*
 inputs/2026-04-15 17-28-00.mkv
 .venv-whisperx/*
 
+outputs/*.json
