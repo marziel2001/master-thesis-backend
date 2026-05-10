@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 from jiwer import cer, wer
 from pydantic import BaseModel
 from fastApi.diff_html import build_colored_diff_html, normalize_for_metrics
@@ -160,10 +161,11 @@ async def transcribe(
             temp_path = temp.name
 
         start_time = time.perf_counter()
-        transcript = transcribe_audio(
-            model=normalized_model,
-            audio_path=temp_path,
-            whisper_model=whisper_model,
+        transcript = await run_in_threadpool(
+            transcribe_audio,
+            normalized_model,
+            temp_path,
+            whisper_model,
         )
         rt_time = time.perf_counter() - start_time
 
