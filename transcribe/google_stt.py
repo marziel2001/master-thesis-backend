@@ -1,11 +1,5 @@
 import os
 import importlib
-import sys
-
-try:
-    from google.cloud import speech_v1 as speech
-except Exception:
-    speech = None
 
 
 def ensure_requirements():
@@ -32,6 +26,14 @@ def transcribe_file(audio_path: str):
     ensure_requirements()
     base_dir = os.path.dirname(__file__)
     creds_path = os.path.join(base_dir, "..", "credentials", "google_credentials.json")
+    try:
+        from google.cloud import speech_v1 as speech
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not import google.cloud.speech_v1. Install google-cloud-speech "
+            "in the active environment and restart the backend."
+        ) from exc
+
     client = speech.SpeechClient.from_service_account_file(creds_path)
 
     # Wczytanie pliku audio
