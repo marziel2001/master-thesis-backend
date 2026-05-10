@@ -1,0 +1,34 @@
+{
+  "models": [
+    {
+      "id": "openai",
+      "label": "OpenAI Whisper",
+      "variants": ["gpt-4o-transcribe", "whisper-1"],
+      "defaultVariant": "gpt-4o-transcribe"
+    },
+    {
+      "id": "whisperOffline",
+      "label": "Whisper offline",
+      "variants": ["large-v3", "medium", "small"],
+      "defaultVariant": "large-v3"
+    },
+    {
+      "id": "whisperX",
+      "label": "WhisperX",
+      "variants": ["large-v3", "medium", "small"],
+      "defaultVariant": "large-v3"
+    },
+    {
+      "id": "googleStt",
+      "label": "Google STT"
+    },
+    {
+      "id": "azureStt",
+      "label": "Azure STT"
+    },
+    {
+      "id": "amazonStt",
+      "label": "Amazon Transcribe"
+    }
+  ]
+}

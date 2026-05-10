@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-import json
 import os
 import time
 from typing import Dict, Literal
 
-from transcribe.amazon_stt import transcribe_file
+from fastApi.model_catalog import available_models as catalog_available_models
+from transcribe.DEFAULT_MODELS import (
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_WHISPER_OFFLINE_MODEL,
+    DEFAULT_WHISPERX_MODEL,
+)
 
 ModelName = Literal[
     "openai",
@@ -18,14 +22,6 @@ ModelName = Literal[
 
 _whisper_clients: Dict[str, object] = {}
 
-_PATH_MODEL_NAMES = [
-    "openai",
-    "whisperOffline",
-    "whisperX",
-    "googleStt",
-    "azureStt",
-    "amazonStt",
-]
 _MODEL_ALIASES: dict[str, ModelName] = {
     "openai": "openai",
     "openaiwhisper": "openai",
@@ -46,7 +42,7 @@ _MODEL_ALIASES: dict[str, ModelName] = {
 
 
 def available_models() -> list[str]:
-    return _PATH_MODEL_NAMES
+    return catalog_available_models()
 
 
 def resolve_model_name(model_name: str) -> ModelName:
@@ -54,7 +50,7 @@ def resolve_model_name(model_name: str) -> ModelName:
     resolved = _MODEL_ALIASES.get(normalized)
     if not resolved:
         raise ValueError(
-            f"Unsupported model '{model_name}'. Use one of: {', '.join(_PATH_MODEL_NAMES)}"
+            f"Unsupported model '{model_name}'. Use one of: {', '.join(available_models())}"
         )
     return resolved
 
@@ -75,10 +71,10 @@ def _transcribe_with_google(audio_path: str) -> str:
     return " ".join(parts).strip()
 
 
-def _transcribe_with_openai(audio_path: str) -> str:
+def _transcribe_with_openai(audio_path: str, model_variant: str) -> str:
     from transcribe.openAiWhisper import transcribe_file
 
-    return transcribe_file(audio_path)
+    return transcribe_file(audio_path, model=model_variant)
 
 
 def _transcribe_with_whisperx(audio_path: str, whisper_model: str) -> str:
@@ -108,9 +104,11 @@ def _transcribe_with_local_whisper(audio_path: str, whisper_model: str) -> str:
     return result.get("text", "") if isinstance(result, dict) else ""
 
 
-def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "large-v3") -> str:
+def transcribe_audio(model: ModelName, audio_path: str, model_variant: str | None = None) -> str:
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+    resolved_variant = (model_variant or "").strip()
 
     mock_responses = False
 
@@ -121,16 +119,24 @@ def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "la
     if model == "openai":
         if mock_responses:
             return _mock_response("Open ai called")
-        return "Powietrzu kołysało się mnóstwo płatków śniegu, a jeden bardzo duży uczepił się na brzegu skrzynki kwiatowej, zaczął rosnąć prędko, coraz większy, wyższy, aż stał się cudną panią w długiej białej szacie z cieniutkiego przezroczystego muślinu, obsypanej milionami śnieżnych gwiazdek. Ciało jej było z przezroczystego lodu, białe i połyskujące, a jednak ona żyła. Patrzyła się na Kaja i uśmiechała się do niego, a oczy jej jaśniały jak brylanty. Na koniec skinęła ręką, jak gdyby wzywała go z sobą. Kaj przeląkł się bardzo, zeskoczył z krzesła i uciekł w głąb izdebki, ale zdawało mu się, że wielki ptak jakiś przeleciał koło okna."
-    #_transcribe_with_openai(audio_path)
+        return _transcribe_with_openai(
+            audio_path,
+            resolved_variant or DEFAULT_OPENAI_MODEL,
+        )
     if model == "whisper_offline":
         if mock_responses:
             return _mock_response("Local whisper called")
-        return _transcribe_with_local_whisper(audio_path, whisper_model=whisper_model)
+        return _transcribe_with_local_whisper(
+            audio_path,
+            whisper_model=resolved_variant or DEFAULT_WHISPER_OFFLINE_MODEL,
+        )
     if model == "whisperx":
         if mock_responses:
             return _mock_response("WhisperX called")
-        return _transcribe_with_whisperx(audio_path, whisper_model=whisper_model)
+        return _transcribe_with_whisperx(
+            audio_path,
+            whisper_model=resolved_variant or DEFAULT_WHISPERX_MODEL,
+        )
     if model == "google":
         if mock_responses:
             return _mock_response("Google called")

@@ -6,6 +6,7 @@ import os
 from typing import Any
 import argparse
 from datetime import datetime
+from transcribe.DEFAULT_MODELS import DEFAULT_WHISPERX_MODEL
 
 try:
     import whisperx
@@ -92,7 +93,7 @@ def _extract_text(result: Any) -> str:
 
 def transcribe_file(
     audio_path: str,
-    model_size: str = "large-v3",
+    model_size: str = DEFAULT_WHISPERX_MODEL,
     language: str | None = None,
     device: str | None = None,
     compute_type: str | None = None,
@@ -124,7 +125,7 @@ def transcribe_file(
 def _build_cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="WhisperX transcription helper")
     parser.add_argument("audio_path", help="Path to audio file")
-    parser.add_argument("--model", default="large-v3", help="Whisper model name")
+    parser.add_argument("--model", default=DEFAULT_WHISPERX_MODEL, help="Whisper model name")
     parser.add_argument("--language", default=None, help="Language code, e.g. pl")
     parser.add_argument("--device", default=None, help="cpu or cuda")
     parser.add_argument(

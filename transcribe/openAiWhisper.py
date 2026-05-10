@@ -1,6 +1,7 @@
 import json
 import os
 from openai import OpenAI
+from transcribe.DEFAULT_MODELS import DEFAULT_OPENAI_MODEL
 
 
 def load_api_key() -> str | None:
@@ -22,11 +23,11 @@ def get_client() -> OpenAI:
     return OpenAI()
 
 
-def transcribe_file(audio_path: str) -> str:
+def transcribe_file(audio_path: str, model: str = DEFAULT_OPENAI_MODEL) -> str:
     client = get_client()
     with open(audio_path, "rb") as audio_file:
         transcription = client.audio.transcriptions.create(
-            model="gpt-4o-transcribe",
+            model=model,
             file=audio_file
         )
     return transcription.text

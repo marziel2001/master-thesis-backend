@@ -12,7 +12,13 @@ from starlette.concurrency import run_in_threadpool
 from jiwer import cer, wer
 from pydantic import BaseModel
 from fastApi.diff_html import build_colored_diff_html, normalize_for_metrics
-from fastApi.transcription_service import available_models, resolve_model_name, transcribe_audio
+from fastApi.model_catalog import load_model_catalog
+from fastApi.transcription_service import resolve_model_name, transcribe_audio
+from transcribe.DEFAULT_MODELS import (
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_WHISPER_OFFLINE_MODEL,
+    DEFAULT_WHISPERX_MODEL,
+)
 
 app = FastAPI(title="Transcription API", version="1.0.0")
 OUTPUTS_DIR = Path(__file__).resolve().parents[1] / "outputs"
@@ -30,8 +36,8 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 @app.get("/api/models")
-def models() -> dict[str, list[str]]:
-    return {"models": available_models()}
+def models() -> dict[str, object]:
+    return load_model_catalog()
 
 
 class DiffHtmlRequest(BaseModel):
@@ -70,11 +76,18 @@ class TranscriptionResponse(BaseModel):
     output_file: str | None = None
 
 
-def _resolve_model_version(model_name: str, whisper_model: str) -> str:
-    if model_name in {"whisper_offline", "whisperx"}:
-        return whisper_model
+def _resolve_model_version(
+    model_name: str,
+    model_variant: str,
+    whisper_model: str,
+) -> str:
+    requested_variant = model_variant.strip()
     if model_name == "openai":
-        return "gpt-4o-transcribe"
+        return requested_variant or DEFAULT_OPENAI_MODEL
+    if model_name == "whisper_offline":
+        return requested_variant or whisper_model or DEFAULT_WHISPER_OFFLINE_MODEL
+    if model_name == "whisperx":
+        return requested_variant or whisper_model or DEFAULT_WHISPERX_MODEL
     return model_name
 
 
@@ -146,7 +159,8 @@ def metrics(payload: MetricsRequest) -> MetricsResponse:
 async def transcribe(
     model_name: str,
     file: UploadFile = File(...),
-    whisper_model: str = Form("large-v3"),
+    whisper_model: str = Form(DEFAULT_WHISPER_OFFLINE_MODEL),
+    model_variant: str = Form(""),
     reference_text: str = Form(""),
 ) -> TranscriptionResponse:
     temp_path = None
@@ -154,7 +168,11 @@ async def transcribe(
     try:
         normalized_model = resolve_model_name(model_name)
         suffix = os.path.splitext(file.filename or "audio.bin")[1]
-        model_version = _resolve_model_version(normalized_model, whisper_model)
+        model_version = _resolve_model_version(
+            normalized_model,
+            model_variant,
+            whisper_model,
+        )
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
             temp.write(await file.read())
@@ -165,7 +183,7 @@ async def transcribe(
             transcribe_audio,
             normalized_model,
             temp_path,
-            whisper_model,
+            model_version,
         )
         rt_time = time.perf_counter() - start_time
 

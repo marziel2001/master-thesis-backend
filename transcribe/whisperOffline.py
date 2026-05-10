@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import os
 from typing import Any
+from transcribe.DEFAULT_MODELS import DEFAULT_WHISPER_OFFLINE_MODEL
 
 try:
     import whisper
@@ -23,7 +24,7 @@ except Exception as e:
 
 
 class LocalWhisperClient:
-    def __init__(self, model_size="small"):
+    def __init__(self, model_size=DEFAULT_WHISPER_OFFLINE_MODEL):
         self.model = whisper.load_model(model_size)
 
     def transcribe(self, audio_path: str) -> dict:
@@ -551,7 +552,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model-size",
-        default="large-v3",
+        default=DEFAULT_WHISPER_OFFLINE_MODEL,
         help="Whisper model size, e.g. small, medium, large-v3.",
     )
     parser.add_argument(
@@ -594,7 +595,7 @@ def test_local_whisper():
     args = _build_arg_parser().parse_args()
 
     print(f"Dostepne modele: {whisper.available_models()}")
-    client = LocalWhisperClient(model_size="large-v3")
+    client = LocalWhisperClient(model_size=DEFAULT_WHISPER_OFFLINE_MODEL)
 
     base_dir = os.path.join(os.path.dirname(__file__), "..")
     print("=== TEST LOKALNEGO KLIENTA ===")
