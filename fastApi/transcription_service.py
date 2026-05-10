@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Dict, Literal
 
 from transcribe.amazon_stt import transcribe_file
@@ -111,22 +112,35 @@ def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "la
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
+    mock_responses = True
+
+    def _mock_response(text: str) -> str:
+        time.sleep(1)
+        return text
+
     if model == "openai":
-        return "Open ai called"
+        if mock_responses:
+            return _mock_response("Open ai called")
         return _transcribe_with_openai(audio_path)
     if model == "whisper_offline":
-        # return "local whisper called"
+        if mock_responses:
+            return _mock_response("Local whisper called")
         return _transcribe_with_local_whisper(audio_path, whisper_model=whisper_model)
     if model == "whisperx":
+        if mock_responses:
+            return _mock_response("WhisperX called")
         return _transcribe_with_whisperx(audio_path, whisper_model=whisper_model)
     if model == "google":
-        return "Google called"
+        if mock_responses:
+            return _mock_response("Google called")
         return _transcribe_with_google(audio_path)
     if model == "azure":
-        return "Azure called"
+        if mock_responses:
+            return _mock_response("Azure called")
         return _transcribe_with_azure(audio_path)
     if model == "amazon":
-        return "Amazon called"
+        if mock_responses:
+            return _mock_response("Amazon called")
         return _transcribe_with_amazon(audio_path)
 
     raise ValueError(f"Unsupported model: {model}")
