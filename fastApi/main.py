@@ -210,6 +210,8 @@ async def transcribe(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except HTTPException:
         raise
     except Exception as exc:
@@ -218,4 +220,11 @@ async def transcribe(
     finally:
         await file.close()
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+            for _ in range(10):
+                try:
+                    os.remove(temp_path)
+                    break
+                except PermissionError:
+                    time.sleep(0.1)
+            else:
+                pass
