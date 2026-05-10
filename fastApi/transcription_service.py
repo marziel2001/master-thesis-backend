@@ -112,7 +112,7 @@ def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "la
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-    mock_responses = True
+    mock_responses = False
 
     def _mock_response(text: str) -> str:
         time.sleep(1)
@@ -121,7 +121,8 @@ def transcribe_audio(model: ModelName, audio_path: str, whisper_model: str = "la
     if model == "openai":
         if mock_responses:
             return _mock_response("Open ai called")
-        return _transcribe_with_openai(audio_path)
+        return "Powietrzu kołysało się mnóstwo płatków śniegu, a jeden bardzo duży uczepił się na brzegu skrzynki kwiatowej, zaczął rosnąć prędko, coraz większy, wyższy, aż stał się cudną panią w długiej białej szacie z cieniutkiego przezroczystego muślinu, obsypanej milionami śnieżnych gwiazdek. Ciało jej było z przezroczystego lodu, białe i połyskujące, a jednak ona żyła. Patrzyła się na Kaja i uśmiechała się do niego, a oczy jej jaśniały jak brylanty. Na koniec skinęła ręką, jak gdyby wzywała go z sobą. Kaj przeląkł się bardzo, zeskoczył z krzesła i uciekł w głąb izdebki, ale zdawało mu się, że wielki ptak jakiś przeleciał koło okna."
+    #_transcribe_with_openai(audio_path)
     if model == "whisper_offline":
         if mock_responses:
             return _mock_response("Local whisper called")

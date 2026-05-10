@@ -1,5 +1,6 @@
 import os
 import json
+import threading
 
 try:
     import azure.cognitiveservices.speech as speechsdk
@@ -44,23 +45,49 @@ def transcribe_file(audio_path: str):
         speech_config=speech_config, audio_config=audio_input
     )
 
-    result = recognizer.recognize_once()
+    recognized_parts: list[str] = []
+    done = threading.Event()
+    failure: dict[str, str] = {}
 
-    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        return result.text
-    elif result.reason == speechsdk.ResultReason.NoMatch:
-        details = getattr(result, "no_match_details", None)
-        detail_text = getattr(details, "reason", None)
-        if detail_text is not None:
-            raise RuntimeError(f"Azure returned NoMatch: {detail_text}")
-        raise RuntimeError("Azure returned NoMatch and no speech was recognized.")
-    else:
-        cancellation_details = speechsdk.CancellationDetails(result)
-        error_details = cancellation_details.error_details or ""
+    def _on_recognized(event) -> None:
+        if event.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            text = (event.result.text or "").strip()
+            if text:
+                recognized_parts.append(text)
+
+    def _on_canceled(event) -> None:
+        cancellation_details = speechsdk.CancellationDetails(event.result)
+        if cancellation_details.reason == speechsdk.CancellationReason.EndOfStream:
+            done.set()
+            return
+        failure["reason"] = str(cancellation_details.reason)
+        failure["details"] = cancellation_details.error_details or ""
+        done.set()
+
+    def _on_session_stopped(_: object) -> None:
+        done.set()
+
+    recognizer.recognized.connect(_on_recognized)
+    recognizer.canceled.connect(_on_canceled)
+    recognizer.session_stopped.connect(_on_session_stopped)
+
+    recognizer.start_continuous_recognition()
+    done.wait()
+    recognizer.stop_continuous_recognition()
+
+    if failure:
+        reason = failure.get("reason", "Unknown")
+        details = failure.get("details", "")
         raise RuntimeError(
             "Azure recognition was canceled: "
-            f"{cancellation_details.reason}. {error_details}".strip()
+            f"{reason}. {details}".strip()
         )
+
+    transcript = " ".join(recognized_parts).strip()
+    if transcript:
+        return transcript
+
+    raise RuntimeError("Azure returned no recognized speech for the full audio file.")
 
 
 if __name__ == "__main__":
