@@ -3,9 +3,14 @@ from __future__ import annotations
 import json
 import time
 import os
+import sys
 from typing import Any
 import argparse
 from datetime import datetime
+
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from transcribe.DEFAULT_MODELS import DEFAULT_WHISPERX_MODEL
 
 try:

@@ -6,7 +6,12 @@ import re
 import time
 from datetime import datetime
 import os
+import sys
 from typing import Any
+
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from transcribe.DEFAULT_MODELS import DEFAULT_WHISPER_OFFLINE_MODEL
 
 try:
