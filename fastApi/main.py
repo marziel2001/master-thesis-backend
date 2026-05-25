@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 import time
+import wave
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -68,6 +71,7 @@ class TranscriptionResponse(BaseModel):
     model_name: str
     model_version: str
     compute_time: float
+    audio_duration: float | None = None
     filename: str
     transcription: str
     wer: float | None = None
@@ -96,6 +100,7 @@ def _write_transcription_output(
     model_name: str,
     model_version: str,
     compute_time: float,
+    audio_duration: float | None,
     filename: str,
     transcription: str,
     output_path: Path,
@@ -107,6 +112,7 @@ def _write_transcription_output(
         "modelName": model_name,
         "modelVersion": model_version,
         "computeTime": compute_time,
+        "audioDuration": audio_duration,
         "filename": filename,
         "transcription": transcription,
         "wer": wer_value,
@@ -114,6 +120,63 @@ def _write_transcription_output(
     }
     output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return output_path
+
+
+def _get_audio_duration_ffprobe(audio_path: str) -> float | None:
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                audio_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+    except Exception:
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    try:
+        data = json.loads(result.stdout)
+        duration_raw = data.get("format", {}).get("duration")
+        duration = float(duration_raw)
+        if duration > 0:
+            return duration
+    except Exception:
+        return None
+
+    return None
+
+
+def _get_audio_duration_wave(audio_path: str) -> float | None:
+    try:
+        with closing(wave.open(audio_path, "rb")) as handle:
+            frames = handle.getnframes()
+            rate = handle.getframerate()
+            if rate <= 0:
+                return None
+            duration = frames / float(rate)
+            return duration if duration > 0 else None
+    except Exception:
+        return None
+
+
+def get_audio_duration(audio_path: str) -> float | None:
+    duration = _get_audio_duration_ffprobe(audio_path)
+    if duration is not None:
+        return duration
+    return _get_audio_duration_wave(audio_path)
 
 
 def calculate_metrics(
@@ -186,6 +249,7 @@ async def transcribe(
             model_version,
         )
         rt_time = time.perf_counter() - start_time
+        audio_duration = get_audio_duration(temp_path)
 
         wer_value: float | None = None
         cer_value: float | None = None
@@ -206,6 +270,7 @@ async def transcribe(
             model_name=normalized_model,
             model_version=model_version,
             compute_time=rt_time,
+            audio_duration=audio_duration,
             filename=file.filename or "",
             transcription=transcript or "",
             output_path=output_path,
@@ -219,6 +284,7 @@ async def transcribe(
             model_name=normalized_model,
             model_version=model_version,
             compute_time=rt_time,
+            audio_duration=audio_duration,
             filename=file.filename or "",
             transcription=transcript or "",
             wer=wer_value,
