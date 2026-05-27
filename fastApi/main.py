@@ -65,6 +65,14 @@ class MetricsResponse(BaseModel):
     cer: float
 
 
+class NormalizeTextRequest(BaseModel):
+    text: str
+
+
+class NormalizeTextResponse(BaseModel):
+    text: str
+
+
 class TranscriptionResponse(BaseModel):
     requested_model: str
     model: str
@@ -216,6 +224,11 @@ def metrics(payload: MetricsRequest) -> MetricsResponse:
         normalize=payload.normalize,
     )
     return MetricsResponse(wer=wer_value, cer=cer_value)
+
+
+@app.post("/api/normalize-text", response_model=NormalizeTextResponse)
+def normalize_text(payload: NormalizeTextRequest) -> NormalizeTextResponse:
+    return NormalizeTextResponse(text=normalize_for_metrics(payload.text))
 
 
 @app.post("/api/transcribe/{model_name}", response_model=TranscriptionResponse)
