@@ -187,6 +187,42 @@ def get_audio_duration(audio_path: str) -> float | None:
     return _get_audio_duration_wave(audio_path)
 
 
+def _should_convert_to_wav(file_name: str) -> bool:
+    suffix = Path(file_name).suffix.lower()
+    return suffix in {".m4a", ".mp3"}
+
+
+def _convert_audio_to_wav(source_path: str, target_path: str) -> None:
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                source_path,
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                target_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "ffmpeg is required to convert m4a/mp3 files to wav."
+        ) from exc
+
+    if result.returncode != 0 or not os.path.exists(target_path):
+        stderr = result.stderr.strip() if result.stderr else ""
+        raise RuntimeError(
+            "Failed to convert audio file to wav."
+            + (f" ffmpeg output: {stderr}" if stderr else "")
+        )
+
+
 def calculate_metrics(
     reference_text: str,
     hypothesis_text: str,
@@ -240,6 +276,7 @@ async def transcribe(
     reference_text: str = Form(""),
 ) -> TranscriptionResponse:
     temp_path = None
+    converted_path = None
 
     try:
         normalized_model = resolve_model_name(model_name)
@@ -254,15 +291,23 @@ async def transcribe(
             temp.write(await file.read())
             temp_path = temp.name
 
+        audio_path = temp_path
+        if _should_convert_to_wav(file.filename or ""):
+            wav_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+            wav_temp.close()
+            converted_path = wav_temp.name
+            _convert_audio_to_wav(temp_path, converted_path)
+            audio_path = converted_path
+
         start_time = time.perf_counter()
         transcript = await run_in_threadpool(
             transcribe_audio,
             normalized_model,
-            temp_path,
+            audio_path,
             model_version,
         )
         rt_time = time.perf_counter() - start_time
-        audio_duration = get_audio_duration(temp_path)
+        audio_duration = get_audio_duration(audio_path)
 
         wer_value: float | None = None
         cer_value: float | None = None
@@ -316,6 +361,15 @@ async def transcribe(
 
     finally:
         await file.close()
+        if converted_path and os.path.exists(converted_path):
+            for _ in range(10):
+                try:
+                    os.remove(converted_path)
+                    break
+                except PermissionError:
+                    time.sleep(0.1)
+            else:
+                pass
         if temp_path and os.path.exists(temp_path):
             for _ in range(10):
                 try:
