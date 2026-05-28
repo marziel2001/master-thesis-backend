@@ -201,7 +201,7 @@ def _convert_audio_to_wav(source_path: str, target_path: str) -> None:
                 "-i",
                 source_path,
                 "-ar",
-                "16000",
+                "44100",
                 "-ac",
                 "1",
                 target_path,
