@@ -189,7 +189,7 @@ def get_audio_duration(audio_path: str) -> float | None:
 
 def _should_convert_to_wav(file_name: str) -> bool:
     suffix = Path(file_name).suffix.lower()
-    return suffix in {".m4a", ".mp3"}
+    return suffix in {".m4a", ".aac", ".mp3"}
 
 
 def _convert_audio_to_wav(source_path: str, target_path: str) -> None:
