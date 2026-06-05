@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -25,6 +27,7 @@ from transcribe.DEFAULT_MODELS import (
 
 app = FastAPI(title="Transcription API", version="1.0.0")
 OUTPUTS_DIR = Path(__file__).resolve().parents[1] / "outputs"
+RUNS_DIR = OUTPUTS_DIR / "runs"
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,6 +87,34 @@ class UpdateOutputResponse(BaseModel):
     output_file: str
 
 
+class RunResultPayload(BaseModel):
+    model: str
+    model_version: str | None = None
+    transcription: str
+    wer: float | None = None
+    cer: float | None = None
+    rt_time: float | None = None
+    rtf: float | None = None
+    audio_duration: float | None = None
+    output_file: str | None = None
+
+
+class RunCreateRequest(BaseModel):
+    name: str | None = None
+    reference_text: str
+    audio_filename: str | None = None
+    results: list[RunResultPayload]
+
+
+class RunResponse(BaseModel):
+    id: str
+    created_at: str
+    name: str | None = None
+    reference_text: str
+    audio_filename: str | None = None
+    results: list[RunResultPayload]
+
+
 class TranscriptionResponse(BaseModel):
     requested_model: str
     model: str
@@ -118,7 +149,7 @@ def _write_transcription_output(
     *,
     model_name: str,
     model_version: str,
-    compute_time: float,
+    compute_time: float | None,
     audio_duration: float | None,
     filename: str,
     transcription: str,
@@ -141,6 +172,21 @@ def _write_transcription_output(
     }
     output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return output_path
+
+
+def _ensure_runs_dir() -> None:
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _generate_run_id() -> str:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    random_part = f"{time.time_ns() % 1000000:06d}"
+    return f"{stamp}_{random_part}"
+
+
+def _sanitize_run_id(name: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "_", name.strip())
+    return cleaned.strip(" ._")
 
 
 def _get_audio_duration_ffprobe(audio_path: str) -> float | None:
@@ -278,6 +324,124 @@ def metrics(payload: MetricsRequest) -> MetricsResponse:
 @app.post("/api/normalize-text", response_model=NormalizeTextResponse)
 def normalize_text(payload: NormalizeTextRequest) -> NormalizeTextResponse:
     return NormalizeTextResponse(text=normalize_for_metrics(payload.text))
+
+
+@app.get("/api/runs", response_model=list[RunResponse])
+def list_runs() -> list[RunResponse]:
+    _ensure_runs_dir()
+    runs: list[RunResponse] = []
+
+    for run_dir in RUNS_DIR.iterdir():
+        if not run_dir.is_dir():
+            continue
+        run_file = run_dir / "run.json"
+        if not run_file.exists():
+            continue
+        try:
+            payload = json.loads(run_file.read_text(encoding="utf-8") or "{}")
+            runs.append(RunResponse(**payload))
+        except Exception:
+            continue
+
+    runs.sort(key=lambda run: run.created_at, reverse=True)
+    return runs
+
+
+@app.get("/api/runs/{run_id}", response_model=RunResponse)
+def get_run(run_id: str) -> RunResponse:
+    run_file = RUNS_DIR / run_id / "run.json"
+    if not run_file.exists():
+        raise HTTPException(status_code=404, detail="Run not found.")
+    try:
+        payload = json.loads(run_file.read_text(encoding="utf-8") or "{}")
+        return RunResponse(**payload)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid run file contents.",
+        ) from exc
+
+
+@app.post("/api/runs", response_model=RunResponse)
+def create_run(payload: RunCreateRequest) -> RunResponse:
+    if not payload.results:
+        raise HTTPException(status_code=400, detail="Run must contain results.")
+
+    _ensure_runs_dir()
+    run_name = (payload.name or "").strip()
+    run_id = _sanitize_run_id(run_name) if run_name else ""
+    if not run_id:
+        run_id = _generate_run_id()
+        run_name = None
+    else:
+        run_name = run_id
+    run_dir = RUNS_DIR / run_id
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=False)
+
+    created_at = datetime.now().isoformat()
+    audio_stem = Path(payload.audio_filename or "audio").stem or "audio"
+    output_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results: list[RunResultPayload] = []
+
+    for result in payload.results:
+        output_name = f"transcription_{result.model}_{audio_stem}_{output_timestamp}.json"
+        output_path = run_dir / output_name
+        _write_transcription_output(
+            model_name=result.model,
+            model_version=result.model_version or "",
+            compute_time=result.rt_time,
+            audio_duration=result.audio_duration,
+            filename=payload.audio_filename or "",
+            transcription=result.transcription,
+            output_path=output_path,
+            wer_value=result.wer,
+            cer_value=result.cer,
+            reference_text=payload.reference_text,
+        )
+        results.append(
+            RunResultPayload(
+                model=result.model,
+                model_version=result.model_version,
+                transcription=result.transcription,
+                wer=result.wer,
+                cer=result.cer,
+                rt_time=result.rt_time,
+                rtf=result.rtf,
+                audio_duration=result.audio_duration,
+                output_file=str(output_path),
+            )
+        )
+
+    run_payload = RunResponse(
+        id=run_id,
+        created_at=created_at,
+        name=run_name,
+        reference_text=payload.reference_text,
+        audio_filename=payload.audio_filename,
+        results=results,
+    )
+    (run_dir / "run.json").write_text(
+        json.dumps(run_payload.dict(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return run_payload
+
+
+@app.delete("/api/runs/{run_id}")
+def delete_run(run_id: str) -> dict[str, str]:
+    run_dir = RUNS_DIR / run_id
+    if not run_dir.exists():
+        raise HTTPException(status_code=404, detail="Run not found.")
+    try:
+        shutil.rmtree(run_dir)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete run.",
+        ) from exc
+    return {"status": "ok"}
 
 
 @app.post("/api/output/update", response_model=UpdateOutputResponse)
