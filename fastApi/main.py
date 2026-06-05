@@ -73,6 +73,17 @@ class NormalizeTextResponse(BaseModel):
     text: str
 
 
+class UpdateOutputRequest(BaseModel):
+    output_file: str
+    wer: float | None = None
+    cer: float | None = None
+    reference_text: str = ""
+
+
+class UpdateOutputResponse(BaseModel):
+    output_file: str
+
+
 class TranscriptionResponse(BaseModel):
     requested_model: str
     model: str
@@ -267,6 +278,48 @@ def metrics(payload: MetricsRequest) -> MetricsResponse:
 @app.post("/api/normalize-text", response_model=NormalizeTextResponse)
 def normalize_text(payload: NormalizeTextRequest) -> NormalizeTextResponse:
     return NormalizeTextResponse(text=normalize_for_metrics(payload.text))
+
+
+@app.post("/api/output/update", response_model=UpdateOutputResponse)
+def update_output(payload: UpdateOutputRequest) -> UpdateOutputResponse:
+    output_path = Path(payload.output_file).expanduser()
+    try:
+        resolved_path = output_path.resolve()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid output file path.",
+        ) from exc
+
+    outputs_root = OUTPUTS_DIR.resolve()
+    if outputs_root not in resolved_path.parents and resolved_path != outputs_root:
+        raise HTTPException(
+            status_code=400,
+            detail="Output file is outside outputs directory.",
+        )
+
+    if not resolved_path.exists():
+        raise HTTPException(status_code=404, detail="Output file not found.")
+
+    try:
+        data = json.loads(resolved_path.read_text(encoding="utf-8") or "{}")
+        if not isinstance(data, dict):
+            raise ValueError("Output file must contain a JSON object.")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid output file contents.",
+        ) from exc
+
+    data["wer"] = payload.wer
+    data["cer"] = payload.cer
+    data["reference"] = payload.reference_text
+
+    resolved_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return UpdateOutputResponse(output_file=str(resolved_path))
 
 
 @app.post("/api/transcribe/{model_name}", response_model=TranscriptionResponse)
