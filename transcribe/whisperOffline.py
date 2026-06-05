@@ -39,7 +39,9 @@ class LocalWhisperClient:
             audio_path,
             language="pl",
             fp16=False,
-            verbose=True
+            verbose=True,
+            temperature=0.0,
+            condition_on_previous_text=False,
         )
 
         end = time.perf_counter()
