@@ -114,6 +114,7 @@ def _write_transcription_output(
     output_path: Path,
     wer_value: float | None,
     cer_value: float | None,
+    reference_text: str,
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -123,6 +124,7 @@ def _write_transcription_output(
         "audioDuration": audio_duration,
         "filename": filename,
         "transcription": transcription,
+        "reference": reference_text,
         "wer": wer_value,
         "cer": cer_value,
     }
@@ -334,6 +336,7 @@ async def transcribe(
             output_path=output_path,
             wer_value=wer_value,
             cer_value=cer_value,
+            reference_text=reference_text,
         )
 
         return TranscriptionResponse(
