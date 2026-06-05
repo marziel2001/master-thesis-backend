@@ -59,17 +59,32 @@ def _transcribe_with_google(audio_path: str) -> str:
     from transcribe.google_stt import transcribe_file
 
     response = transcribe_file(audio_path)
+
     if not getattr(response, "results", None):
         return ""
 
     parts: list[str] = []
-    for result in response.results:
-        if not result.alternatives:
+
+    for file_result in response.results.values():
+
+        # 1. próbuj inline_result (często najprostsze)
+        inline = getattr(file_result, "inline_result", None)
+        if inline and inline.transcript:
+            for r in inline.transcript.results:
+                for alt in r.alternatives:
+                    if alt.transcript:
+                        parts.append(alt.transcript)
             continue
-        parts.append(result.alternatives[0].transcript)
+
+        # 2. fallback: transcript field
+        transcript_obj = getattr(file_result, "transcript", None)
+        if transcript_obj:
+            for r in transcript_obj.results:
+                for alt in r.alternatives:
+                    if alt.transcript:
+                        parts.append(alt.transcript)
 
     return " ".join(parts).strip()
-
 
 def _transcribe_with_openai(audio_path: str, model_variant: str) -> str:
     from transcribe.openAiWhisper import transcribe_file
@@ -140,6 +155,7 @@ def transcribe_audio(model: ModelName, audio_path: str, model_variant: str | Non
     if model == "google":
         if mock_responses:
             return _mock_response("Google called")
+
         return _transcribe_with_google(audio_path)
     if model == "azure":
         if mock_responses:
