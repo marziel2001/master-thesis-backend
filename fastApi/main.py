@@ -54,7 +54,9 @@ class DiffHtmlRequest(BaseModel):
 
 
 class DiffHtmlResponse(BaseModel):
-    html: str
+    ref_html: str
+    hyp_html: str
+    title_html: str | None = None
 
 
 class MetricsRequest(BaseModel):
@@ -303,12 +305,16 @@ def diff_html(payload: DiffHtmlRequest) -> DiffHtmlResponse:
         reference_text = normalize_for_metrics(reference_text)
         hypothesis_text = normalize_for_metrics(hypothesis_text)
 
-    html_output = build_colored_diff_html(
+    ref_html, hyp_html = build_colored_diff_html(
         reference_text=reference_text,
         hypothesis_text=hypothesis_text,
         model_name=payload.model_name,
     )
-    return DiffHtmlResponse(html=html_output)
+
+    return DiffHtmlResponse(
+        ref_html=ref_html,
+        hyp_html=hyp_html
+    )
 
 
 @app.post("/api/metrics", response_model=MetricsResponse)

@@ -34,8 +34,7 @@ def _tokens_to_spans(tokens: list[str], css_class: str) -> str:
         f"<span class='token {css_class}'>{html.escape(token)}</span> " for token in tokens
     )
 
-
-def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_name: str) -> str:
+def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_name: str):
     try:
         processed = process_words(reference_text, hypothesis_text)
 
@@ -67,7 +66,7 @@ def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_nam
             ref_line.append("<br/>")
             hyp_line.append("<br/>")
 
-        return f"""
+        base_style = f"""
         <style>
           .diff-wrap {{
             border: 1px solid #ddd;
@@ -80,38 +79,34 @@ def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_nam
             white-space: normal;
             word-break: break-word;
           }}
-          .diff-title {{ font-weight: 700; margin-bottom: 6px; }}
-          .diff-row-label {{ font-weight: 700; color: #333; margin-right: 8px; }}
-          .token {{
-                        display: inline;
-                        margin: 0;
-                        padding: 0;
-                        border-radius: 0;
-          }}
-                    .eq {{ background: transparent; color: inherit; }}
-                    .sub-ref {{ background: #ffe1e1; color: #8a1c1c; padding: 0 4px; border-radius: 4px; }}
-                    .sub-hyp {{ background: #fff1cc; color: #7a5b00; padding: 0 4px; border-radius: 4px; }}
-                    .del {{ background: #ffd6d6; color: #8a1c1c; text-decoration: line-through; padding: 0 4px; border-radius: 4px; }}
-                    .ins {{ background: #d9f8d9; color: #1d6f1d; font-weight: 600; padding: 0 4px; border-radius: 4px; }}
-                    .gap {{ color: #888; }}
-          .legend {{ margin-top: 8px; color: #555; font-size: 11px; }}
+          .token {{ display:inline; margin:0; padding:0; }}
+          .eq {{ background: transparent; }}
+          .sub-ref {{ background:#ffe1e1; color:#8a1c1c; padding:0 4px; border-radius:4px; }}
+          .sub-hyp {{ background:#fff1cc; color:#7a5b00; padding:0 4px; border-radius:4px; }}
+          .del {{ background:#ffd6d6; color:#8a1c1c; text-decoration:line-through; padding:0 4px; border-radius:4px; }}
+          .ins {{ background:#d9f8d9; color:#1d6f1d; font-weight:600; padding:0 4px; border-radius:4px; }}
+          .gap {{ color:#888; }}
         </style>
+        """
+
+        ref_html = f"""
+        {base_style}
         <div class='diff-wrap'>
-          <div class='diff-title'>Różnice względem referencji - {html.escape(model_name)}</div>
-          <div><span class='diff-row-label'>Wzorzec:</span>{''.join(ref_line)}</div>
-          <br/>
-          <div><span class='diff-row-label'>Wynik:</span>{''.join(hyp_line)}</div>
-          <div class='legend'>
-            <span class='token sub-ref'>zamiana (ref)</span>
-            <span class='token sub-hyp'>zamiana (model)</span>
-            <span class='token del'>usuniete</span>
-            <span class='token ins'>dodane</span>
-          </div>
+          <div><b>Wzorzec:</b></div>
+          <div>{''.join(ref_line)}</div>
         </div>
         """
+
+        hyp_html = f"""
+        {base_style}
+        <div class='diff-wrap'>
+          <div><b>Wynik:</b></div>
+          <div>{''.join(hyp_line)}</div>
+        </div>
+        """
+
+        return ref_html, hyp_html
+
     except Exception as exc:
-        return (
-            "<div style='color:#b00020;'>"
-            f"Nie udalo sie wygenerowac diff HTML dla {html.escape(model_name)}: {html.escape(str(exc))}"
-            "</div>"
-        )
+        err = f"<div style='color:#b00020;'>Błąd: {html.escape(str(exc))}</div>"
+        return err, err
