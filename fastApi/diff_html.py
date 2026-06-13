@@ -98,8 +98,9 @@ def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_nam
         </style>
         <div class='diff-wrap'>
           <div class='diff-title'>Różnice względem referencji - {html.escape(model_name)}</div>
-          <div><span class='diff-row-label'>REF:</span>{''.join(ref_line)}</div>
-          <div><span class='diff-row-label'>HYP:</span>{''.join(hyp_line)}</div>
+          <div><span class='diff-row-label'>Wzorzec:</span>{''.join(ref_line)}</div>
+          <br/>
+          <div><span class='diff-row-label'>Wynik:</span>{''.join(hyp_line)}</div>
           <div class='legend'>
             <span class='token sub-ref'>zamiana (ref)</span>
             <span class='token sub-hyp'>zamiana (model)</span>
