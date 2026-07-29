@@ -349,7 +349,7 @@ def list_runs() -> list[RunResponse]:
         except Exception:
             continue
 
-    runs.sort(key=lambda run: run.created_at, reverse=True)
+    runs.sort(key=lambda run: run.name, reverse=True)
     return runs
 
 
