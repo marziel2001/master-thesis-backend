@@ -1,0 +1,33 @@
+# Speech-to-text provider SDKs.
+#
+# Every adapter in transcribe/ imports its SDK lazily, so you only need the
+# entries for the models you actually intend to call. Install with:
+#
+#   pip install -r requirements-providers.txt
+#
+-r requirements.txt
+
+# OpenAI Whisper API (model id: openai)
+openai>=1.30
+
+# Local Whisper (model id: whisperOffline). ffmpeg must be on PATH.
+openai-whisper>=20231117
+
+# WhisperX (model id: whisperX)
+whisperx>=3.1
+torch>=2.2
+
+# Google Cloud Speech-to-Text v2 (model id: googleStt)
+google-cloud-speech>=2.26
+google-cloud-storage>=2.16
+
+# Azure Speech (model id: azureStt)
+azure-cognitiveservices-speech>=1.37
+
+# Amazon Transcribe (model id: amazonStt)
+boto3>=1.34
+requests>=2.31
+
+# Optional: speaker diarization for the transcribe/whisperOffline.py CLI.
+# pyannote.audio>=3.1
+# soundfile>=0.12

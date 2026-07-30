@@ -1,12 +1,11 @@
-import os
 import importlib
+import os
 
+from google.api_core.client_options import ClientOptions
 from google.cloud import storage
 from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types import cloud_speech
 from google.oauth2 import service_account
-from google.api_core.client_options import ClientOptions
-
 
 BUCKET_NAME = "magisterka-stt-marziel"
 BUCKET_FOLDER = "transcriptions"
@@ -132,9 +131,7 @@ def transcribe_file(audio_path: str):
 
     operation = client.batch_recognize(request=request)
 
-    response = operation.result(timeout=3600)
-
-    return response
+    return operation.result(timeout=3600)
 
 
 if __name__ == "__main__":

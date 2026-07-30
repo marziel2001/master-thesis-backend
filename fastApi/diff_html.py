@@ -1,74 +1,28 @@
+"""Renders a reference/hypothesis word alignment as two HTML fragments."""
+
 from __future__ import annotations
 
 import html
+import logging
 
 from jiwer import process_words
 
-try:
-    from backend.scripts.remove_punctuation import strip_punctuation_text
-except ModuleNotFoundError:
-    from scripts.remove_punctuation import strip_punctuation_text
+from scripts.remove_punctuation import strip_punctuation_text
 
+logger = logging.getLogger(__name__)
 
-def normalize_for_metrics(text: str) -> str:
-    return strip_punctuation_text(text).lower()
+#: jiwer chunk types, grouped by how they should be highlighted.
+_EQUAL_TYPES = frozenset({"equal", "hit", "correct"})
+_SUBSTITUTE_TYPES = frozenset({"substitute", "substitution", "replace"})
+_DELETE_TYPES = frozenset({"delete", "deletion"})
+_INSERT_TYPES = frozenset({"insert", "insertion"})
 
+#: Placeholder shown opposite an inserted or deleted word.
+_GAP_SPAN = "<span class='token gap'>∅</span> "
 
-def _chunk_type_to_class(chunk_type: object) -> str:
-    normalized = str(chunk_type).lower()
-    if normalized in ("equal", "hit", "correct"):
-        return "eq"
-    if normalized in ("substitute", "substitution", "replace"):
-        return "sub"
-    if normalized in ("delete", "deletion"):
-        return "del"
-    if normalized in ("insert", "insertion"):
-        return "ins"
-    return "eq"
-
-
-def _tokens_to_spans(tokens: list[str], css_class: str) -> str:
-    if not tokens:
-        return ""
-    return "".join(
-        f"<span class='token {css_class}'>{html.escape(token)}</span> " for token in tokens
-    )
-
-def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_name: str):
-    try:
-        processed = process_words(reference_text, hypothesis_text)
-
-        ref_line: list[str] = []
-        hyp_line: list[str] = []
-
-        for sent_idx, chunks in enumerate(processed.alignments):
-            ref_tokens = processed.references[sent_idx]
-            hyp_tokens = processed.hypotheses[sent_idx]
-
-            for chunk in chunks:
-                css_class = _chunk_type_to_class(chunk.type)
-                ref_part = ref_tokens[chunk.ref_start_idx : chunk.ref_end_idx]
-                hyp_part = hyp_tokens[chunk.hyp_start_idx : chunk.hyp_end_idx]
-
-                if css_class == "del":
-                    ref_line.append(_tokens_to_spans(ref_part, "del"))
-                    hyp_line.append("<span class='token gap'>∅</span> ")
-                elif css_class == "ins":
-                    ref_line.append("<span class='token gap'>∅</span> ")
-                    hyp_line.append(_tokens_to_spans(hyp_part, "ins"))
-                elif css_class == "sub":
-                    ref_line.append(_tokens_to_spans(ref_part, "sub-ref"))
-                    hyp_line.append(_tokens_to_spans(hyp_part, "sub-hyp"))
-                else:
-                    ref_line.append(_tokens_to_spans(ref_part, "eq"))
-                    hyp_line.append(_tokens_to_spans(hyp_part, "eq"))
-
-            ref_line.append("<br/>")
-            hyp_line.append("<br/>")
-
-        base_style = f"""
+_BASE_STYLE = """
         <style>
-          .diff-wrap {{
+          .diff-wrap {
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 10px;
@@ -78,35 +32,114 @@ def build_colored_diff_html(reference_text: str, hypothesis_text: str, model_nam
             line-height: 1.7;
             white-space: normal;
             word-break: break-word;
-          }}
-          .token {{ display:inline; margin:0; padding:0; }}
-          .eq {{ background: transparent; }}
-          .sub-ref {{ background:#ffe1e1; color:#8a1c1c; padding:0 4px; border-radius:4px; }}
-          .sub-hyp {{ background:#fff1cc; color:#7a5b00; padding:0 4px; border-radius:4px; }}
-          .del {{ background:#ffd6d6; color:#8a1c1c; text-decoration:line-through; padding:0 4px; border-radius:4px; }}
-          .ins {{ background:#d9f8d9; color:#1d6f1d; font-weight:600; padding:0 4px; border-radius:4px; }}
-          .gap {{ color:#888; }}
+          }
+          .token { display:inline; margin:0; padding:0; }
+          .eq { background: transparent; }
+          .sub-ref, .sub-hyp, .del, .ins {
+            padding: 0 4px;
+            border-radius: 4px;
+          }
+          .sub-ref { background:#ffe1e1; color:#8a1c1c; }
+          .sub-hyp { background:#fff1cc; color:#7a5b00; }
+          .del { background:#ffd6d6; color:#8a1c1c; text-decoration:line-through; }
+          .ins { background:#d9f8d9; color:#1d6f1d; font-weight:600; }
+          .gap { color:#888; }
         </style>
         """
 
-        ref_html = f"""
-        {base_style}
+
+def normalize_for_metrics(text: str) -> str:
+    """Lower-cased, punctuation-free form used for both metrics and diffing."""
+    return strip_punctuation_text(text).lower()
+
+
+def _chunk_class(chunk_type: object) -> str:
+    normalized = str(chunk_type).lower()
+
+    if normalized in _SUBSTITUTE_TYPES:
+        return "sub"
+    if normalized in _DELETE_TYPES:
+        return "del"
+    if normalized in _INSERT_TYPES:
+        return "ins"
+    if normalized not in _EQUAL_TYPES:
+        logger.debug("Unrecognised alignment chunk type %r; treating as equal", chunk_type)
+
+    return "eq"
+
+
+def _tokens_to_spans(tokens: list[str], css_class: str) -> str:
+    return "".join(
+        f"<span class='token {css_class}'>{html.escape(token)}</span> "
+        for token in tokens
+    )
+
+
+def _wrap(title: str, body_parts: list[str]) -> str:
+    return f"""
+        {_BASE_STYLE}
         <div class='diff-wrap'>
-          <div><b>Wzorzec:</b></div>
-          <div>{''.join(ref_line)}</div>
+          <div><b>{title}:</b></div>
+          <div>{''.join(body_parts)}</div>
         </div>
         """
 
-        hyp_html = f"""
-        {base_style}
-        <div class='diff-wrap'>
-          <div><b>Wynik:</b></div>
-          <div>{''.join(hyp_line)}</div>
-        </div>
-        """
 
-        return ref_html, hyp_html
+def build_colored_diff_html(
+    reference_text: str,
+    hypothesis_text: str,
+    model_name: str,
+) -> tuple[str, str]:
+    """Return ``(reference_html, hypothesis_html)`` with aligned words marked up.
 
+    Every token is HTML-escaped. On failure both fragments carry the same error
+    message, so the caller always has something to display.
+    """
+    try:
+        processed = process_words(reference_text, hypothesis_text)
+
+        reference_parts: list[str] = []
+        hypothesis_parts: list[str] = []
+
+        for sentence_index, chunks in enumerate(processed.alignments):
+            reference_tokens = processed.references[sentence_index]
+            hypothesis_tokens = processed.hypotheses[sentence_index]
+
+            for chunk in chunks:
+                css_class = _chunk_class(chunk.type)
+                reference_slice = reference_tokens[
+                    chunk.ref_start_idx : chunk.ref_end_idx
+                ]
+                hypothesis_slice = hypothesis_tokens[
+                    chunk.hyp_start_idx : chunk.hyp_end_idx
+                ]
+
+                if css_class == "del":
+                    reference_parts.append(_tokens_to_spans(reference_slice, "del"))
+                    hypothesis_parts.append(_GAP_SPAN)
+                elif css_class == "ins":
+                    reference_parts.append(_GAP_SPAN)
+                    hypothesis_parts.append(_tokens_to_spans(hypothesis_slice, "ins"))
+                elif css_class == "sub":
+                    reference_parts.append(
+                        _tokens_to_spans(reference_slice, "sub-ref")
+                    )
+                    hypothesis_parts.append(
+                        _tokens_to_spans(hypothesis_slice, "sub-hyp")
+                    )
+                else:
+                    reference_parts.append(_tokens_to_spans(reference_slice, "eq"))
+                    hypothesis_parts.append(
+                        _tokens_to_spans(hypothesis_slice, "eq")
+                    )
+
+            reference_parts.append("<br/>")
+            hypothesis_parts.append("<br/>")
+
+        return _wrap("Wzorzec", reference_parts), _wrap("Wynik", hypothesis_parts)
     except Exception as exc:
-        err = f"<div style='color:#b00020;'>Błąd: {html.escape(str(exc))}</div>"
-        return err, err
+        logger.exception("Could not build diff for model %s", model_name)
+        error_html = (
+            f"<div style='color:#b00020;'>Błąd: {html.escape(str(exc))}</div>"
+        )
+        return error_html, error_html

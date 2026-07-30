@@ -9,7 +9,11 @@ temp_refs/*
 *.wav
 *.mp3
 *.txt
+# Dependency manifests must be tracked despite the blanket *.txt rule above.
+!requirements.txt
+!requirements-providers.txt
 *.pyc
+__pycache__/
 inputs/2026-04-15 17-28-00.mkv
 .venv-whisperx/*
 

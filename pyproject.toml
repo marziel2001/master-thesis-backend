@@ -1,0 +1,34 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv-whisperx", "outputs", "credentials"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # comprehensions
+    "SIM",  # simplifications
+    "RET",  # return-statement hygiene
+    "PTH",  # prefer pathlib over os.path
+    "LOG",  # logging misuse
+    "G",    # logging format strings
+    "BLE",  # blind excepts
+    "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI declares request parameters as `= File(...)` / `= Form(...)` defaults,
+# which is exactly what B008 flags.
+"fastApi/routers/*" = ["B008"]
+# Provider adapters and CLI helpers predate this layout: they probe third-party
+# response objects defensively and are run directly as scripts.
+"transcribe/*" = ["BLE", "PTH", "C901", "E501", "SIM102", "SIM105", "B904"]
+"scripts/*" = ["PTH"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fastApi", "transcribe", "scripts"]

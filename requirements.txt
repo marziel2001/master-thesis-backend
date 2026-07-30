@@ -1,0 +1,8 @@
+# Core API. Enough to run every endpoint except the actual speech providers.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+# Required by FastAPI for the multipart upload on /api/transcribe.
+python-multipart>=0.0.9
+pydantic>=2.7
+# WER / CER and the word alignment used by /api/diff-html.
+jiwer>=3.0

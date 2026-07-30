@@ -13,7 +13,11 @@ def strip_punctuation_text(text: str, normalize_whitespace: bool = True) -> str:
     return result
 
 
-def remove_punctuation_from_file(input_path: str | Path, output_path: str | Path, normalize_whitespace: bool = True) -> Path:
+def remove_punctuation_from_file(
+    input_path: str | Path,
+    output_path: str | Path,
+    normalize_whitespace: bool = True,
+) -> Path:
     in_path = Path(input_path)
     out_path = Path(output_path)
 

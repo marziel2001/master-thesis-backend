@@ -1,6 +1,8 @@
 import json
 import os
+
 from openai import OpenAI
+
 from transcribe.DEFAULT_MODELS import DEFAULT_OPENAI_MODEL
 
 
@@ -8,7 +10,7 @@ def load_api_key() -> str | None:
     creds_path = os.path.join(os.path.dirname(__file__), "..", "credentials", "openai_credentials.json")
     api_key = None
     try:
-        with open(creds_path, "r", encoding="utf-8") as f:
+        with open(creds_path, encoding="utf-8") as f:
             data = json.load(f)
             api_key = data.get("openai_api_key") or data.get("api_key")
     except Exception:

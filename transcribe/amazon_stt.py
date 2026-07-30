@@ -1,9 +1,8 @@
-import os
 import json
+import os
+import sys
 import time
 import uuid
-from typing import Optional
-import sys
 
 try:
     import boto3
@@ -18,13 +17,13 @@ def _load_aws_credentials(cfg_path: str) -> dict:
     if not os.path.exists(cfg_path):
         return {}
     try:
-        with open(cfg_path, "r", encoding="utf-8") as f:
+        with open(cfg_path, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
 
 
-def transcribe_file(audio_path: str, bucket: Optional[str] = None, region: str = "eu-central-1") -> str:
+def transcribe_file(audio_path: str, bucket: str | None = None, region: str = "eu-central-1") -> str:
     """Transcribe an audio file using Amazon Transcribe.
 
     Workflow:

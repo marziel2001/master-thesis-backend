@@ -1,12 +1,12 @@
 import argparse
-import io
 import importlib
+import io
 import json
+import os
 import re
+import sys
 import time
 from datetime import datetime
-import os
-import sys
 from typing import Any
 
 if __package__ is None or __package__ == "":
@@ -62,7 +62,7 @@ def _resolve_token(cli_token: str | None) -> str | None:
         return None
 
     try:
-        with open(token_path, "r", encoding="utf-8") as f:
+        with open(token_path, encoding="utf-8") as f:
             tokens = json.load(f)
             return tokens.get("PYANNOTE_TOKEN") or None
     except Exception:
@@ -72,7 +72,7 @@ def _resolve_token(cli_token: str | None) -> str | None:
 def _load_diarization_pipeline(token: str):
     try:
         pyannote_audio = importlib.import_module("pyannote.audio")
-        Pipeline = getattr(pyannote_audio, "Pipeline")
+        Pipeline = pyannote_audio.Pipeline
     except Exception as e:
         raise ImportError(
             "pyannote.audio is required for diarization. Install with: pip install pyannote.audio"
@@ -467,11 +467,11 @@ def _extract_diarization_segments(diarization: Any) -> list[dict[str, Any]]:
     # Newer SDK/outputs may expose diarization segments directly.
     candidate = None
     if hasattr(diarization, "speaker_diarization"):
-        candidate = getattr(diarization, "speaker_diarization")
+        candidate = diarization.speaker_diarization
     elif hasattr(diarization, "diarization"):
-        candidate = getattr(diarization, "diarization")
+        candidate = diarization.diarization
     elif hasattr(diarization, "segments"):
-        candidate = getattr(diarization, "segments")
+        candidate = diarization.segments
     elif isinstance(diarization, dict):
         candidate = (
             diarization.get("speaker_diarization")

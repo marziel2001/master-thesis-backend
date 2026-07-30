@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import threading
 
 try:
@@ -21,7 +21,7 @@ def transcribe_file(audio_path: str):
     config_path = os.path.join(os.path.dirname(__file__), "..", "credentials", "azure_credentials.json")
     if os.path.exists(config_path):
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 cfg = json.load(f)
                 key = cfg.get("AZURE_SPEECH_KEY") or cfg.get("key")
                 region = cfg.get("AZURE_SPEECH_REGION") or cfg.get("region")

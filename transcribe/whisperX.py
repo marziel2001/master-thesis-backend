@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import json
-import time
 import os
 import sys
-from typing import Any
-import argparse
+import time
 from datetime import datetime
+from typing import Any
 
 if __package__ is None or __package__ == "":
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
