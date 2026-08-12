@@ -39,7 +39,9 @@ def list_runs() -> list[RunResponse]:
         except ValidationError:
             logger.warning("Skipping run with unexpected contents: %s", payload.get("id"))
 
-    runs.sort(key=lambda run: run.name, reverse=True)
+    # `name` is optional: a run saved without one keeps its timestamp id as the
+    # only label, so fall back to it rather than comparing str against None.
+    runs.sort(key=lambda run: run.name or run.id, reverse=True)
 
     return runs
 
