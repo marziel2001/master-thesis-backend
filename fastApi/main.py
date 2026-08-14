@@ -14,6 +14,7 @@ from fastApi.core.config import get_frontend_origin
 from fastApi.routers import (
     diff,
     health,
+    live_transcription,
     metrics,
     models,
     outputs,
@@ -31,6 +32,7 @@ ROUTERS = (
     runs.router,
     outputs.router,
     transcription.router,
+    live_transcription.router,
 )
 
 
